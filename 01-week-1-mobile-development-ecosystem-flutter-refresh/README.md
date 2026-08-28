@@ -119,12 +119,6 @@ Hasil:
 
 <img src="./screenshots/run_new.png">
 
-```text
-Penjelasan:
-- Hot reload menerapkan perubahan kode secara cepat tanpa mengatur ulang state aplikasi, sehingga cocok untuk menguji perubahan UI.
-- Hot restart memulai ulang aplikasi dari awal dan menghapus state yang ada, sehingga digunakan ketika perubahan tidak bisa diterapkan dengan hot reload, misalnya pada proses inisialisasi.
-```
-
 # 4. Git dan portfolio
 
 Di dalam folder my_first_app, konfigurasikan identitas Git bila belum pernah dilakukan dan buat commit awal:
@@ -137,7 +131,7 @@ git add .
 git commit -m "feat: create week 1 Flutter profile app"
 ```
 
-<img src="./screenshots/git_environment.png">
+
 
 Buat repository kosong di GitHub atau GitLab (tanpa README awal jika sudah ada lokal), lalu hubungkan dan unggah commit (nim ganti dengan NIM Anda):
 
@@ -146,51 +140,3 @@ git branch -M main
 git remote add origin https://github.com/USERNAME/nim-mobile-course.git
 git push -u origin main
 ```
-
-<img src="./screenshots/git_push.png">
-
-# 5. Verifikasi
-
-## Checklist verifikasi
-
-- `flutter doctor` tidak memiliki masalah yang menghambat target Android. ✅
-- `flutter devices` mendeteksi emulator/perangkat fisik. ✅
-
-<img src="./screenshots/flutter_devices.png">
-
-- Aplikasi berjalan dan UI default telah diganti dengan profil sederhana. ✅
-- Anda dapat menjelaskan perbedaan hot reload dan hot restart. ✅
-- Repository remote berisi source code, README, screenshot, dan riwayat commit. ✅
-
-## Mini assignment
-
-Buat aplikasi Profil Mahasiswa berdasarkan praktikum. Tambahkan NIM dan satu informasi tambahan menggunakan widget dasar. Push hasil ke repository portfolio sesuai struktur yang ditentukan. Sertakan screenshot dan penjelasan singkat atas satu kendala setup yang Anda temui.
-
-```dart
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Profil Mahasiswa')),
-        body: const Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.school, size: 72),
-            SizedBox(height: 16),
-            Text('Robby Catur Wicaksono', style: TextStyle(fontSize: 24)),
-            Text('NIM: 244107020048'), // Menambahkan NIM
-            Text('Pemrograman Mobile — Minggu 1'),
-            Text('Prodi: D4 Teknik Informatika'), // Menambahkan 1 informasi tambahan: "Prodi"
-          ]),
-        ),
-      ),
-    );
-  }
-}
-```
-
-Hasil run:
-
-<img src="./screenshots/changes_result.png">

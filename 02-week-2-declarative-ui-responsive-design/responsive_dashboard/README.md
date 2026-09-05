@@ -1,17 +1,32 @@
-# responsive_dashboard
+# Responsive Dashboard
 
-A new Flutter project.
+Dashboard yang menampilkan kartu profil mahasiswa sebagai latihan declarative UI dan responsive design menggunakan Flutter.
 
-## Getting Started
+## Tujuan
 
-This project is a starting point for a Flutter application.
+Mempelajari konsep dasar declarative UI dengan widget Flutter dan responsive design. Fokusnya adalah memahami bagaimana layout menyesuaikan diri terhadap berbagai ukuran layar (ponsel dan tablet) serta menguasai widget dasar seperti `Container`, `Row`, `Column`, dan `Expanded`.
 
-A few resources to get you started if this is your first Flutter project:
+## Fitur Utama
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Menampilkan kartu profil mahasiswa (nama, NIM, kelas) dalam satu `Card`.
+- Layout yang dapat menyesuaikan diri terhadap ukuran layar perangkat.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Stack Teknologi
+
+- **Flutter** — framework UI multi-platform.
+- **Dart** — bahasa pemrograman yang digunakan Flutter.
+
+## Cara Menjalankan
+
+Aplikasi dapat dijalankan di emulator, simulator, atau perangkat fisik. Pastikan Flutter SDK sudah terpasang, lalu jalankan perintah berikut di dalam folder `responsive_dashboard`:
+
+```bash
+flutter pub get
+flutter run
+```
+
+## Hasil yang Dicapai
+
+- Memahami konsep declarative UI dan widget dasar Flutter (`Container`, `Row`, `Column`, `Expanded`).
+- Mampu membaca perilaku layout, termasuk mengamati peringatan overflow saat `Expanded` dihapus.
+- Mampu membuat kartu profil sederhana dan membandingkan tampilannya pada layar 5 inch dan 10 inch.

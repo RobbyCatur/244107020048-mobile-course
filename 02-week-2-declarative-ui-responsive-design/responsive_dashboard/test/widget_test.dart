@@ -1,30 +1,33 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// This is a basic Flutter widget test for the Academic Overview dashboard.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:responsive_dashboard/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Dashboard renders profile, cards, and toggles theme',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const AcademicOverviewApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Header & title are present.
+    expect(find.text('Academic Overview'), findsOneWidget);
+    expect(find.text('Robby Catur Wicaksono'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Info cards render their semantic labels.
+    expect(find.text('Assignments'), findsOneWidget);
+    expect(find.text('Attendance'), findsOneWidget);
+    expect(find.text('Portfolio'), findsOneWidget);
+    expect(find.text('Current week'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Dark mode toggle starts off, then switches on.
+    final switchFinder = find.byType(CupertinoSwitch);
+    expect(switchFinder, findsOneWidget);
+    expect(tester.widget<CupertinoSwitch>(switchFinder).value, isFalse);
+
+    await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<CupertinoSwitch>(switchFinder).value, isTrue);
   });
 }

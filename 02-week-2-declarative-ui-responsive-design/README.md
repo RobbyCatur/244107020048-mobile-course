@@ -865,7 +865,7 @@ Karena perubahan nama class (sebelumnya `MyApp`) menjadi `AcademicOverviewApp`, 
 
 Setelah diperbaiki maka tidak ada masalah
 
-<img src="./screenshots/tugas2_05_1.png">
+<img src="./screenshots/tugas2_05_2.png">
 
 Kesimpulan: Saran AI masuk dalam kriteria **Lolos** karena memenuhi kriteria: berjalan, responsif, dan tidak menurunkan aksesibilitas.
 

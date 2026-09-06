@@ -16,7 +16,7 @@ class _DashboardAppState extends State<DashboardApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+      showSemanticsDebugger: true,
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
       darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark, colorSchemeSeed: Colors.indigo),
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
@@ -43,15 +43,20 @@ class DashboardPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Student Dashboard'),
         actions: [
-          Row(
-            children: [
-              Icon(isDark ? Icons.dark_mode : Icons.light_mode),
-              const SizedBox(width: 4),
-              CupertinoSwitch(
-                value: isDark,
-                onChanged: onDarkChanged,
-              ),
-            ],)
+          Semantics(
+            label: 'Aktifkan mode gelap',
+            toggled: isDark,
+            child: Row(
+              children: [
+                Icon(isDark ? Icons.dark_mode : Icons.light_mode),
+                const SizedBox(width: 4),
+                CupertinoSwitch(
+                  value: isDark,
+                  onChanged: onDarkChanged,
+                ),
+              ],
+            ),
+          )
         ],
         ),
       body: LayoutBuilder(
@@ -83,13 +88,16 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(children: [
-          Expanded(child: Text(title)),
-          Text(value, style: Theme.of(context).textTheme.headlineSmall),
-        ]),
+    return Semantics(
+      label: '$title: $value',
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(children: [
+            Expanded(child: Text(title)),
+            Text(value, style: Theme.of(context).textTheme.headlineSmall),
+          ]),
+        ),
       ),
     );
   }

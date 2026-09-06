@@ -346,3 +346,135 @@ Widget yang dihasilkan oleh `Cupertino` memiliki tampilan khas Apple, yang berbe
 | Tampilan | Selalu gaya iOS di platform apa pun | Otomatis menyesuaikan (Cupertino di iOS, Material di Android/Web/Desktop) |
 | Properti | value, onChanged | value, onChanged, plus activeColor, materialTapTargetSize, dll |
 | Pemakaian | Saat aplikasi ingin tampilan persis iOS | Saat aplikasi ingin konsisten dengan konvensi tiap OS |
+
+## Eksperimen Layout
+
+1. Ubah breakpoint dari 700 menjadi nilai lain dan amati perubahan jumlah kolom.
+
+```dart
+// Perubahan untuk Dimensi 5 Inch
+final columns = constraints.maxWidth >= 300 ? 2 : 1;
+
+// Perubahan untuk DImensi 10 Inch
+final columns = constraints.maxWidth >= 1500 ? 2 : 1;
+```
+**Penjelasan:**
+Untuk 5 Inch, mengubah sebelumnya breakpoint 700 menjadi 300 yang menghasilkan 2 kolom yang berbeda (sebelumnya 1). Hal ini karena nilai dari `constraints.maxWidth` yaitu 300 lebih kecil daripada lebar dimensi ponsel itu sendiri, sehingga `constraonts.maxWidth >= 300` mengembalikan nilai `true`. Untuk 10 Inch, mengubah sebelumnya breakpoint 700 menjadi 1500 yang menghasilkan 1 kolom yang berbeda (sebelumnya 2). Hal ini karena nilai dari `constraints.maxWidth` yaitu 1500 lebih besar daripada lebar dimensi ponsel itu sendiri, sehingga `constraonts.maxWidth >= 1500` mengembalikan nilai `false` 
+
+Hasil:
+
+<div style="display: flex; gap: 16px;">
+  <figure style="margin: 0; text-align: center;">
+    <figcaption><strong>5 Inch</strong></figcaption>
+    <img src="./screenshots/praktikum2_no1_5inch.png" height="500px">
+  </figure>
+  <figure style="margin: 0; text-align: center;">
+    <figcaption><strong>10 Inch</strong></figcaption>
+    <img src="./screenshots/praktikum2_no1_10inch.png" height="500px">
+  </figure>
+</div>
+
+2. Ubah themeMode menjadi ThemeMode.dark, lalu kembalikan ke ThemeMode.system.
+
+```dart
+themeMode: ThemeMode.system,
+```
+
+Hasil:
+
+<div style="display: flex; gap: 16px;">
+  <figure style="margin: 0; text-align: center;">
+    <figcaption><strong>5 Inch</strong></figcaption>
+    <img src="./screenshots/praktikum2_no2_dark_5inch.png" height="500px">
+  </figure>
+  <figure style="margin: 0; text-align: center;">
+    <figcaption><strong>10 Inch</strong></figcaption>
+    <img src="./screenshots/praktikum2_no2_dark_10inch.png" height="500px">
+  </figure>
+</div>
+
+**Penjelasan:**
+Aplikasi tetap menggunakan tema gelap, terlepas posisi _toggle_ sedang dalam _light mode_ atau _dark mode_
+
+```dart
+themeMode: ThemeMode.system,
+```
+
+<div style="display: flex; gap: 16px;">
+  <figure style="margin: 0; text-align: center;">
+    <figcaption><strong>5 Inch</strong></figcaption>
+    <img src="./screenshots/praktikum2_no2_system_5inch.png" height="500px">
+  </figure>
+  <figure style="margin: 0; text-align: center;">
+    <figcaption><strong>10 Inch</strong></figcaption>
+    <img src="./screenshots/praktikum2_no2_system_10inch.png" height="500px">
+  </figure>
+</div>
+
+
+3. Uji aplikasi dengan ukuran layar emulator yang berbeda.
+
+**5 Inch:**
+
+<table>
+  <tr>
+    <td><img src="./screenshots/praktikum2_5inch.png" height="220"></td>
+    <td><img src="./screenshots/praktikum2_cupertino_5inch.png" height="220"></td>
+    <td><img src="./screenshots/praktikum2_no1_5inch.png" height="220"></td>
+    <td><img src="./screenshots/praktikum2_no2_dark_5inch.png" height="220"></td>
+    <td><img src="./screenshots/praktikum2_no2_system_5inch.png" height="220"></td>
+  </tr>
+</table>
+
+**10 Inch:**
+
+<table>
+  <tr>
+    <td><img src="./screenshots/praktikum2_10inch.png" height="220"></td>
+    <td><img src="./screenshots/praktikum2_cupertino_10inch.png" height="220"></td>
+    <td><img src="./screenshots/praktikum2_no1_10inch.png" height="220"></td>
+    <td><img src="./screenshots/praktikum2_no2_dark_10inch.png" height="220"></td>
+    <td><img src="./screenshots/praktikum2_no2_system_10inch.png" height="220"></td>
+  </tr>
+</table>
+
+4. Tambahkan Semantics atau label yang bermakna pada elemen yang penting bagi screen reader.
+
+**Jawaban:**
+
+Pada `lib/main.dart`, elemen penting dibungkus dengan widget `Semantics` agar dapat dibacakan oleh *_screen reader_* (mis. TalkBack/VoiceOver):
+
+- **Kartu dashboard** (`DashboardCard`) dibungkus `Semantics(label: '$title: $value')` sehingga setiap kartu diumumkan sebagai contoh "Assignments: 8" bukan hanya teks terpisah.
+- **Toggle mode gelap** (`CupertinoSwitch`) dibungkus `Semantics(label: 'Aktifkan mode gelap', toggled: isDark)` agar *screen reader* mengenali fungsi dan status nyala/matinya.
+
+```dart
+// DashboardCard
+return Semantics(
+  label: '$title: $value',
+  child: Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(children: [
+        Expanded(child: Text(title)),
+        Text(value, style: Theme.of(context).textTheme.headlineSmall),
+      ]),
+    ),
+  ),
+);
+
+// Toggle dark mode di AppBar
+Semantics(
+  label: 'Aktifkan mode gelap',
+  toggled: isDark,
+  child: Row(
+    children: [
+      Icon(isDark ? Icons.dark_mode : Icons.light_mode),
+      const SizedBox(width: 4),
+      CupertinoSwitch(value: isDark, onChanged: onDarkChanged),
+    ],
+  ),
+)
+```
+
+Dengan penambahan ini, pengguna disabilitas netra dapat memahami nama dan nilai setiap kartu serta dapat mengoperasikan pengalih tema secara bermakna.
+

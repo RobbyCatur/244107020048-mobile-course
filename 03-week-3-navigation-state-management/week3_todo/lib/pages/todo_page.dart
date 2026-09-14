@@ -19,6 +19,11 @@ class TodoPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('ToDo Riverpod'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_bag_outlined),
+            tooltip: 'Lihat Produk',
+            onPressed: () => context.push('/produk'),
+          ),
           TextButton.icon(
             icon: const Icon(Icons.bar_chart),
             label: const Text('Lihat Statistik'),

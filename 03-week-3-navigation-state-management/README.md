@@ -349,8 +349,10 @@ flutter test
    `TodoPage` menampilkan `SegmentedButton` (Semua/Belum/Selesai).
 3. **GoRouter + NavigationBar** (`lib/main.dart`): `MaterialApp.router` dengan
    `ShellRoute` (`AppShell` + `NavigationBar`) untuk `/` (TodoPage) dan `/stats`
-   (StatsPage); `ProductPage` tetap pada rute `/produk`. Navigasi antar tab
-   memakai `context.go`, back button otomatis menyesuaikan index.
+   (StatsPage). Berpindah tab memakai `context.go` (mengganti posisi, bukan
+   menumpuk). `ProductPage` berada pada rute `/produk` dan dibuka dari appBar
+   `TodoPage` lewat `context.push('/produk')` (menumpuk di atas stack), contoh
+   nyata perbedaan `go` vs `push`.
 
 Hasil verifikasi (perubahan ini):
 

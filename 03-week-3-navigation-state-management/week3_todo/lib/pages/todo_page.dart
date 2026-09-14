@@ -1,59 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/products_provider.dart';
-import '../providers/todo_provider.dart';
-import 'product_page.dart';
+import 'package:go_router/go_router.dart';
 
+import '../providers/todo_provider.dart';
+import '../widgets/todo_tile.dart';
+
+/// Halaman daftar tugas. Filter aktif dibaca dari [visibleTodosProvider]
+/// (provider turunan), bukan difilter manual di dalam build.
 class TodoPage extends ConsumerWidget {
   const TodoPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final todos = ref.watch(todoListProvider);
-    final products = ref.watch(productsProvider);
+    final todos = ref.watch(visibleTodosProvider);
+    final filter = ref.watch(todoFilterProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('ToDo Riverpod'),
         actions: [
           TextButton.icon(
-            icon: const Icon(Icons.shopping_bag_outlined),
-            label: const Text('Lihat Produk'),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const ProductPage()),
-            ),
+            icon: const Icon(Icons.bar_chart),
+            label: const Text('Lihat Statistik'),
+            onPressed: () => context.go('/stats'),
           ),
         ],
       ),
       body: Column(
         children: [
-          SizedBox(
-            width: double.infinity,
-            child: products.when(
-              loading: () => Container(
-                height: 80,
-                alignment: Alignment.center,
-                child: const CircularProgressIndicator(),
-              ),
-              error: (error, _) => Container(
-                height: 80,
-                alignment: Alignment.center,
-                child: Text('Gagal memuat produk: $error'),
-              ),
-              data: (items) => Container(
-                height: 80,
-                alignment: Alignment.center,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  children: items
-                      .map((product) => Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Chip(label: Text(product)),
-                          ))
-                      .toList(),
-                ),
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SegmentedButton<TodoFilter>(
+              segments: const [
+                ButtonSegment(
+                    value: TodoFilter.semua, label: Text('Semua')),
+                ButtonSegment(
+                    value: TodoFilter.belum, label: Text('Belum')),
+                ButtonSegment(
+                    value: TodoFilter.selesai, label: Text('Selesai')),
+              ],
+              selected: {filter},
+              onSelectionChanged: (selection) =>
+                  ref.read(todoFilterProvider.notifier).select(selection.first),
             ),
           ),
           Expanded(
@@ -61,24 +49,14 @@ class TodoPage extends ConsumerWidget {
                 ? const Center(child: Text('Belum ada tugas'))
                 : ListView.builder(
                     itemCount: todos.length,
-                    itemBuilder: (context, index) => ListTile(
-                      leading: Checkbox(
-                        value: todos[index].done,
-                        onChanged: (_) =>
-                            ref.read(todoListProvider.notifier).toggle(index),
-                      ),
-                      title: Text(
-                        todos[index].title,
-                        style: TextStyle(
-                            decoration: todos[index].done
-                                ? TextDecoration.lineThrough
-                                : null),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () =>
-                            ref.read(todoListProvider.notifier).remove(index),
-                      ),
+                    itemBuilder: (context, index) => TodoTile(
+                      todo: todos[index],
+                      onToggle: () => ref
+                          .read(todoListProvider.notifier)
+                          .toggle(todos[index].id),
+                      onRemove: () => ref
+                          .read(todoListProvider.notifier)
+                          .remove(todos[index].id),
                     ),
                   ),
           ),

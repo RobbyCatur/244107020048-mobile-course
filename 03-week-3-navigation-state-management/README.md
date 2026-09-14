@@ -17,7 +17,15 @@
 
 **Penjelasan**
 
-...
+Proyek `week3_navigation` memakai **go_router**. `main.dart` mendeklarasikan
+`GoRouter` dengan `initialLocation: '/'` dan satu `GoRoute` induk (`'/'` ->
+`HomePage`) yang punya rute bersarang `'detail/:id'` -> `DetailPage`.
+`MaterialApp` diganti `MaterialApp.router(routerConfig: _router)` supaya router
+yang mengatur stack halaman. Di `HomePage`, tiap item list memanggil
+`context.go('/detail/${index + 1}')`; go_router membaca parameter path lewat
+`state.pathParameters['id']` lalu meneruskannya ke `DetailPage(id: ...)`.
+Hasilnya: `DetailPage` menampilkan "id" yang sesuai dan tombol back (`AppBar`
+leading) otomatis kembali ke Home tanpa navigasi manual.
 
 ## 2. State management dengan Riverpod
 
@@ -39,7 +47,18 @@
 
 **Penjelasan**
 
-...
+Proyek ToDo memisahkan state dari widget memakai **Riverpod**.
+`TodoListNotifier extends Notifier<List<Todo>>` menyimpan daftar tugas; tiap aksi
+(`add`, `toggle`, `remove`) mengganti `state` dengan **list baru** (immutable,
+memakai `copyWith`), bukan mutasi langsung, sehingga Riverpod mendeteksi
+perubahan. `todoListProvider = NotifierProvider<...>` dibuka sebagai akses
+publik. `TodoPage` adalah `ConsumerWidget`: `ref.watch(todoListProvider)` di
+dalam `build` (agar UI rebuild saat state berubah), sedangkan aksi memakai
+`ref.read(todoListProvider.notifier)` di callback tombol/checkbox.
+`ProviderScope` membungkus root di `main.dart` sebagai tempat tinggal state.
+Alur pada screenshot: daftar kosong ("Belum ada tugas") -> dialog "Tambah" ->
+item muncul (dicoret saat `done`) -> tombol sampah menghapus item; semua
+perubahan terjadi tanpa `setState`, cukup dengan memperbarui provider.
 
 ## 3. AsyncValue: loading, error, success
 
@@ -109,16 +128,163 @@ Jelaskan setiap bagian kode dalam komentar.
 
 **Response**
 
+Kode di bawah adalah hasil implementasi yang diterima (berada di
+`week3_todo/lib/providers/stats_provider.dart` dan
+`week3_todo/lib/pages/stats_page.dart`).
+
+`StatsNotifier` — simulasi fetch statistik (delay 2 detik, 30% gagal):
+
+```dart
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// Satu item statistik: label, nilai, ikon. Immutable.
+class StatEntry {
+  const StatEntry({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+}
+
+/// Simulasi fetch statistik. getter latency/failureRate/random sengaja
+/// virtual agar unit test bisa override jadi deterministik tanpa mengubah
+/// kode produksi (mis. delay 0, gagal 0% / 100%).
+class StatsNotifier extends AsyncNotifier<List<StatEntry>> {
+  Duration get latency => const Duration(seconds: 2);
+  double get failureRate => 0.3;
+  Random get random => Random();
+
+  @override
+  Future<List<StatEntry>> build() async {
+    await Future.delayed(latency); // jeda seolah memanggang server
+
+    if (random.nextDouble() < failureRate) {
+      // Jalur error: AsyncNotifier membungkus throw menjadi AsyncError.
+      throw Exception('Gagal memuat statistik: server tidak merespons');
+    }
+
+    // Jalur success: kembalikan 3 entri.
+    return const [
+      StatEntry(label: 'Total tugas', value: '12', icon: Icons.checklist),
+      StatEntry(label: 'Selesai', value: '7', icon: Icons.task_alt),
+      StatEntry(label: 'Tenggat hari ini', value: '2', icon: Icons.alarm),
+    ];
+  }
+}
+
+/// Provider bertipe eksplisit, pola AsyncNotifier (Riverpod 3).
+final statsProvider =
+    AsyncNotifierProvider<StatsNotifier, List<StatEntry>>(StatsNotifier.new);
+```
+
+`StatsPage` — ConsumerWidget menangani loading, error, dan success:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../providers/stats_provider.dart';
+
+/// ConsumerWidget: bisa memakai ref untuk watch/read tanpa StatefulWidget.
+class StatsPage extends ConsumerWidget {
+  const StatsPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // watch di dalam build: UI rebuild saat state provider berubah.
+    final statsAsync = ref.watch(statsProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Statistik Tugas')),
+      // when() memaksa ketiga state AsyncValue ditangani, bukan hanya data.
+      body: statsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('$error', textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba lagi'),
+                // invalidate di callback: build() dijalankan ulang.
+                onPressed: () => ref.invalidate(statsProvider),
+              ),
+            ],
+          ),
+        ),
+        data: (entries) => ListView.builder(
+          itemCount: entries.length,
+          itemBuilder: (context, index) => ListTile(
+            leading: Icon(entries[index].icon),
+            title: Text(entries[index].label),
+            trailing: Text(
+              entries[index].value,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
+Unit test untuk notifier (`week3_todo/test/stats_provider_test.dart`) memakai
+subclass deterministik (`latency = Duration.zero`, `failureRate = 0` / `1`)
+sehingga jalur sukses, error, dan invalidate bisa diuji tanpa random/timer:
+
+```dart
+class _SucceedsStats extends StatsNotifier {
+  @override
+  Duration get latency => Duration.zero;
+  @override
+  double get failureRate => 0;
+}
+
+class _FailsStats extends StatsNotifier {
+  @override
+  Duration get latency => Duration.zero;
+  @override
+  double get failureRate => 1;
+}
+```
+
 **AI Verification Checklist**
 
 Sebelum kode AI diterima, verifikasi hal berikut dan catat temuan Anda di README:
 
 - Apakah state diubah secara immutable (tidak ada state.add() atau mutasi list langsung)?
+  - **Lulus.** `build()` mengembalikan list baru (`const [...]`); notifer ToDo lain
+    juga immutable (`copyWith` + list comprehension, tidak ada `state.add`).
 - Apakah ref.watch hanya dipakai di dalam build, dan ref.read di callback?
+  - **Lulus.** `ref.watch(statsProvider)` hanya di `build`; aksi memakai callback
+    `ref.invalidate(statsProvider)` / `ref.read(...notifier)` (lihat `TodoPage`).
 - Apakah ketiga state AsyncValue benar-benar ditangani (bukan hanya success)?
+  - **Lulus.** `statsAsync.when(loading:, error:, data:)` lengkap, error punya
+    tombol retry.
 - Apakah provider dideklarasikan dengan tipe eksplisit dan tidak duplikat dengan provider lain?
+  - **Lulus.** `AsyncNotifierProvider<StatsNotifier, List<StatEntry>>`; namanya
+    `statsProvider`, berbeda dari `productsProvider` dan `todoListProvider`.
 - Apakah kode AI memakai API Riverpod versi lama (StateProvider antipattern, StateNotifierProvider usang, atau Consumer bertingkat yang tidak perlu)? Perbaiki ke pola Notifier/ConsumerWidget.
+  - **Lulus.** Sudah memakai `AsyncNotifier` + `AsyncNotifierProvider` +
+    `ConsumerWidget` (Riverpod 3), tanpa `StateProvider`/`StateNotifierProvider`.
 - Jalankan flutter analyze dan flutter test, apakah hasil AI lolos tanpa warning?
+  - **Lulus.** `flutter analyze`: "No issues found". `flutter test`: 5/5 lulus
+    (3 unit test `StatsNotifier` + 2 widget test ToDo).
+
+Catatan perbaikan dari hasil mentah AI: getter `latency`/`failureRate`/`random`
+dijadikan `get` virtual khusus agar unit test deterministik; error dibaca lewat
+`pumpEventQueue()` + cek `AsyncValue.hasError` karena `read(statsProvider.future)`
+pada jalur gagal bisa menggantung di Riverpod 3.
 
 ## 5. Refactoring dan testing
 
@@ -170,9 +336,39 @@ flutter test
 - flutter analyze tanpa issue dan semua test lulus.
 - Hasil AI diverifikasi dan didokumentasikan pada folder docs/.
 
+### Hasil implementasi
+
+1. **TodoTile dipisah** (`lib/widgets/todo_tile.dart`): satu baris tugas
+   (Checkbox + judul coret + tombol hapus) menjadi `StatelessWidget` sendiri.
+   `TodoPage.build` kini hanya menyusun layout + daftar, lebih pendek.
+2. **Filter jadi provider turunan** (`lib/providers/todo_provider.dart`):
+   enum `TodoFilter` + `todoFilterProvider` (`Notifier`) +
+   `visibleTodosProvider` (`Provider`) yang `ref.watch(todoListProvider)` dan
+   `ref.watch(todoFilterProvider)` lalu mengembalikan daftar tersaring. Tiap
+   `Todo` diberi `id` agar toggle/remove tetap benar saat daftar difilter.
+   `TodoPage` menampilkan `SegmentedButton` (Semua/Belum/Selesai).
+3. **GoRouter + NavigationBar** (`lib/main.dart`): `MaterialApp.router` dengan
+   `ShellRoute` (`AppShell` + `NavigationBar`) untuk `/` (TodoPage) dan `/stats`
+   (StatsPage); `ProductPage` tetap pada rute `/produk`. Navigasi antar tab
+   memakai `context.go`, back button otomatis menyesuaikan index.
+
+Hasil verifikasi (perubahan ini):
+
+- `flutter analyze` -> No issues found.
+- `flutter test` -> 5/5 lulus:
+  - `test/stats_provider_test.dart`: sukses 3 entri, state error, invalidate.
+  - `test/widget_test.dart`: `menambah tugas baru` dan
+    `filter menyembunyikan tugas yang sudah selesai`.
+- Widget test §5 di atas sudah dipakai ulang (via `ProviderScope(child: MyApp())`),
+  hanya `pump()` diganti `pumpAndSettle()` agar stabil dengan dialog & router.
+
+Semua item checklist verifikasi mandiri terpenuhi, kecuali catatan bahwa hasil AI
+didokumentasikan langsung di §4 README (belum dibuat folder `docs/` terpisah).
+
 ## 6. Tugas, refleksi, dan referensi
 
 **Mini project / Industry Challenge**
+
 Bangun **aplikasi ToDo dengan navigasi dan Riverpod** sebagai tugas minggu ini:
 
 1. Minimal 2 halaman dengan GoRouter: daftar tugas, halaman detail/statistik.

@@ -83,3 +83,5 @@ Output:
 
 **Kesalahan umum (bahan ujian)**: memanggil Dio langsung dari widget; menelan exception dengan `catch` kosong; menampilkan pesan teknis mentah ke pengguna; lupa menangani empty state; tidak ada timeout sehingga UI menggantung selamanya.
 
+# Praktikum 3: Pagination dasar
+

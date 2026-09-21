@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:week4_api/data/providers.dart';
+import 'package:week4_api/data/network_errors.dart';
 
 /// Uji pemetaan DioException -> pesan ramah pengguna.
 DioException _ex(DioExceptionType type, {int? status}) => DioException(

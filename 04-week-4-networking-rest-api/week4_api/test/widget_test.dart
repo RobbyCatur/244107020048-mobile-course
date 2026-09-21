@@ -32,6 +32,13 @@ class FakePostRepository extends PostRepository {
           body: 'body'),
     );
   }
+
+  @override
+  Future<Post> fetchPost(int id) async {
+    // Jalur detail diuji terpisah; di test list tidak boleh ada fetch
+    // single-post (dan tidak boleh ada HTTP sungguhan).
+    throw StateError('fetchPost tidak boleh dipanggil di test ini');
+  }
 }
 
 void main() {
@@ -66,6 +73,27 @@ void main() {
     expect(repo.fetchCount[1], 1);
     expect(repo.fetchCount[2], 1);
     expect(find.text('Semua data termuat.'), findsOneWidget);
+  });
+
+  testWidgets('Klik tile -> GoRouter ke /post/:id, detail dari cache',
+      (tester) async {
+    final repo = FakePostRepository(pageSizes: const {1: 10});
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        postRepositoryProvider.overrideWith((ref) => repo),
+      ],
+      child: const MyApp(),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Post 1-0'));
+    await tester.pumpAndSettle();
+
+    // Fake id = page*100+i -> tile pertama id 100.
+    // Detail tampil dari cache list; jika malah memanggil fetchPost,
+    // fake akan melempar StateError dan 'Oleh user #1' tidak muncul.
+    expect(find.text('Post #100'), findsOneWidget);
+    expect(find.text('Oleh user #1'), findsOneWidget); // body detail
   });
 
   testWidgets('State empty: server balas sukses tapi 0 data',

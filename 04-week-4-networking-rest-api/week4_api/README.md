@@ -121,4 +121,44 @@ Buat `lib/pages/paged_post_page.dart` dengan ScrollController yang memicu halama
 
 Ubah home di main.dart menjadi PagedPostPage, jalankan, dan scroll sampai bawah. Amati: halaman 1 tampil dulu, indikator muncul, data bertambah tanpa reload penuh.
 
-<img src="../screenshots/praktikum3/preview.png">\
+<img src="../screenshots/praktikum3/preview.png">
+
+# AI Challenge
+
+## AI Prompt Challenge
+
+Minta AI coding assistant (Cursor, Copilot, Claude Code, atau tool setara) dengan prompt berikut:
+
+```text
+Buatkan repository layer Flutter untuk endpoint GET /comments?postId={id}
+dari JSONPlaceholder menggunakan Dio + flutter_riverpod.
+Requirements:
+- Model Comment dengan fromJson aman null (postId, id, name, email, body).
+- CommentRepository dengan method fetchComments(postId) + timeout 10 detik.
+- AsyncNotifierProvider dengan penanganan error otomatis (AsyncError)
+  dan fungsi pesan error
+  ramah pengguna untuk timeout, connection error, 404, dan 500.
+- Satu unit test untuk fromJson dengan field yang hilang.
+Jelaskan setiap bagian kode dalam komentar.
+```
+
+<img src="../screenshots/ai_challenge/prompt.png">
+
+**Hasil:**
+
+<table>
+  <tr>
+    <td>
+    <p>10 Halaman Pertama</p>
+    <img src="../screenshots/ai_challenge/first_page_loaded.jpeg">
+    </td>
+    <td>
+    <p>Halaman Pertama Setelah Terload</p>
+    <img src="../screenshots/ai_challenge/first_page_full.jpeg">
+    </td>
+    <td>
+    <p>Seluruh Halaman</p>
+    <img src="../screenshots/ai_challenge/full_page_loaded.jpeg">
+    </td>
+  </tr>
+</table>

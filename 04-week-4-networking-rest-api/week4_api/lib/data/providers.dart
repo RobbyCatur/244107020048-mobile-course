@@ -2,13 +2,19 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import 'api_client.dart';
+import 'models/comment.dart';
 import 'models/post.dart';
+import 'repositories/comment_repository.dart';
 import 'repositories/post_repository.dart';
 
 final dioProvider = Provider<Dio>((ref) => createDio());
 
 final postRepositoryProvider = Provider<PostRepository>(
   (ref) => PostRepository(ref.watch(dioProvider)),
+);
+
+final commentRepositoryProvider = Provider<CommentRepository>(
+  (ref) => CommentRepository(ref.watch(dioProvider)),
 );
 
 class PostListNotifier extends AsyncNotifier<List<Post>> {
@@ -74,6 +80,35 @@ Future<Object?> readPostsErrorOnce(ProviderContainer container) {
   return completer.future.whenComplete(sub.close);
 }
 
+/// Notifier untuk daftar komentar satu post (provider "family":
+/// satu instance per postId). Riverpod 3 meneruskan argumen family
+/// lewat konstruktor notifier, lalu build() memakai field tersebut.
+class CommentListNotifier extends AsyncNotifier<List<Comment>> {
+  CommentListNotifier(this.postId);
+
+  /// Argument family yang diinjeksikan Riverpod saat instance dibuat.
+  final int postId;
+
+  @override
+  Future<List<Comment>> build() async {
+    // Setiap exception (DioException timeout/connection/404/500, dsb.)
+    // otomatis dibungkus Riverpod menjadi AsyncError — kita tidak perlu
+    // try/catch di sini; UI tinggal membaca state.when(...).
+    // ref.watch agar provider ikut refresh bila repository/Dio diganti.
+    final repository = ref.watch(commentRepositoryProvider);
+    return repository.fetchComments(postId);
+  }
+}
+
+/// Provider keluarga: `commentListProvider(postId)` menghasilkan
+/// `AsyncValue<List<Comment>>` per postId.
+final commentListProvider =
+    AsyncNotifierProvider.family<CommentListNotifier, List<Comment>, int>(
+        CommentListNotifier.new,
+        // Sama seperti postListProvider: matikan retry otomatis Riverpod 3
+        // supaya error langsung final, mudah diuji, dan tidak spamming API.
+        retry: (retryCount, error) => null);
+
 String friendlyErrorMessage(Object error) {
   if (error is DioException) {
     switch (error.type) {
@@ -89,7 +124,11 @@ String friendlyErrorMessage(Object error) {
         if (code == 401 || code == 403) {
           return 'Akses ditolak ($code). Periksa kredensial Anda.';
         }
-        return 'Server bermasalah ($code). Coba lagi nanti.';
+        // 5xx = kerusakan di sisi server, bukan salah pengguna.
+        if (code != null && code >= 500) {
+          return 'Server bermasalah ($code). Coba lagi nanti.';
+        }
+        return 'Terjadi kesalahan jaringan ($code). Coba lagi.';
       default:
         return 'Terjadi kesalahan jaringan. Coba lagi.';
     }

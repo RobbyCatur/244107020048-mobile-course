@@ -1,30 +1,130 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:week4_api/data/models/post.dart';
+import 'package:week4_api/data/providers.dart';
+import 'package:week4_api/data/repositories/post_repository.dart';
 import 'package:week4_api/main.dart';
 
+/// Repository palsu: UI tidak boleh menyentuh Dio di test ini —
+/// kita override postRepositoryProvider, membuktikan arsitektur
+/// "UI -> provider -> repository" bisa di-mock dengan mudah.
+class FakePostRepository extends PostRepository {
+  FakePostRepository({required this.pageSizes}) : super(Dio());
+
+  /// Jumlah item yang dikembalikan per halaman, mis. {1: 10, 2: 5}.
+  final Map<int, int> pageSizes;
+  final Map<int, int> fetchCount = {};
+
+  @override
+  Future<List<Post>> fetchPostsPage(
+      {required int page, int limit = 10}) async {
+    fetchCount[page] = (fetchCount[page] ?? 0) + 1;
+    final count = pageSizes[page] ?? 0;
+    return List.generate(
+      count,
+      (i) => Post(
+          userId: 1,
+          id: page * 100 + i,
+          title: 'Post $page-$i',
+          body: 'body'),
+    );
+  }
+}
+
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Pagination: load 10 awal lalu bertambah saat scroll',
+      (tester) async {
+    final repo = FakePostRepository(pageSizes: const {1: 10, 2: 5});
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        postRepositoryProvider.overrideWith((ref) => repo),
+      ],
+      child: const MyApp(),
+    ));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Halaman pertama termuat lewat microtask di build() notifier.
+    await tester.pumpAndSettle();
+    expect(find.byType(ListTile), findsNWidgets(10));
+    expect(repo.fetchCount[1], 1);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Scroll sampai dasar -> halaman 2 dimuat, footer tampil
+    // indikator akhir data karena halaman 2 hanya 5 item (< limit).
+    await tester.dragUntilVisible(
+      find.text('Semua data termuat.'),
+      find.byType(ListView),
+      const Offset(0, -150),
+    );
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // ListView.builder lazy: tidak semua 15 tile ada di tree.
+    // Bukti data bertambah: item terakhir halaman 2 tepat di atas
+    // footer, dan tiap halaman hanya direquest sekali.
+    expect(find.text('Post 2-4'), findsOneWidget);
+    expect(repo.fetchCount[1], 1);
+    expect(repo.fetchCount[2], 1);
+    expect(find.text('Semua data termuat.'), findsOneWidget);
   });
+
+  testWidgets('State empty: server balas sukses tapi 0 data',
+      (tester) async {
+    final repo = FakePostRepository(pageSizes: const {});
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        postRepositoryProvider.overrideWith((ref) => repo),
+      ],
+      child: const MyApp(),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Belum ada data dari server.'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('State error + retry: gagal lalu sukses setelah override stabil',
+      (tester) async {
+    final repo = FailOncePostRepository();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        postRepositoryProvider.overrideWith((ref) => repo),
+      ],
+      child: const MyApp(),
+    ));
+    await tester.pumpAndSettle();
+
+    // Error pertama harus TAMPAK (bukan spinner abadi) + tombol retry.
+    expect(find.textContaining('Coba lagi'), findsOneWidget);
+
+    await tester.tap(find.text('Coba lagi'));
+    await tester.pumpAndSettle();
+
+    // Retry memanggil loadFirstPage lagi dan kini sukses.
+    expect(find.byType(ListTile), findsNWidgets(10));
+  });
+}
+
+/// Gagal sekali (mis. jaringan putus), lalu sukses — mensimulasikan
+/// DioException connectionError asli tanpa mock HTTP.
+class FailOncePostRepository extends PostRepository {
+  FailOncePostRepository() : super(Dio());
+
+  int attempts = 0;
+
+  @override
+  Future<List<Post>> fetchPostsPage(
+      {required int page, int limit = 10}) async {
+    attempts++;
+    if (attempts == 1) {
+      throw DioException(
+        type: DioExceptionType.connectionError,
+        requestOptions: RequestOptions(path: '/posts'),
+      );
+    }
+    return List.generate(
+      10,
+      (i) => Post(userId: 1, id: i, title: 'T$i', body: 'b'),
+    );
+  }
 }

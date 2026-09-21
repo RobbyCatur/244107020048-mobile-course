@@ -162,3 +162,104 @@ Jelaskan setiap bagian kode dalam komentar.
     </td>
   </tr>
 </table>
+
+## Verifikasi hasil AI di device fisik
+
+Hasil AI tidak dipercaya begitu saja. Layer Comment diverifikasi lewat unit test (2 test fromJson) dan test pesan error (4 test). Namun saat dijalankan di device fisik muncul bug yang tidak tertangkap test: list pagination stuck di 10 item dengan spinner/loading selamanya.
+
+Akar masalah (hasil analisis bersama AI):
+
+1. Error saat memuat halaman berikutnya ditelan diam-diam karena UI hanya
+   menampilkan pesan error ketika list masih kosong.
+2. Di layar tinggi (720x1640), 10 item + footer lebih pendek dari viewport
+   sehingga `maxScrollExtent = 0` — list tidak bisa di-scroll dan listener
+   scroll tidak pernah fires.
+
+Perbaikan: state error disimpan bersama data (footer menampilkan pesan + tombol "Coba lagi"), dan posisi scroll di-check ulang setiap load selesai sehingga halaman berikutnya dimuat otomatis sampai layar terisi.
+
+<table>
+  <tr>
+    <td>
+    <p>Sebelum fix: fling tidak menambah data</p>
+    <img src="../screenshots/ai_challenge/verify_03_now.png">
+    </td>
+    <td>
+    <p>Sesudah fix: 20 item terisi otomatis</p>
+    <img src="../screenshots/ai_challenge/verify_04_autoload.png">
+    </td>
+    <td>
+    <p>Akhir data: footer indikator muncul</p>
+    <img src="../screenshots/ai_challenge/verify_05_manual_scroll.png">
+    </td>
+  </tr>
+</table>
+
+Catatan verifikasi lengkap (termasuk koreksi atas kode hasil AI, mis. cast `as num?` yang masih crash dan `FamilyAsyncNotifier` yang tidak ada di Riverpod 3) didokumentasikan di `docs/verifikasi-ai-week4.md`.
+
+# Refactoring dan testing
+
+## Refactoring Challenge
+
+Lakukan refactoring berikut pada project API Anda, lalu commit dengan pesan yang jelas:
+
+### 1. Ekstrak widget baris post menjadi PostTile tersendiri agar ListView.builder pendek dan mudah diuji.
+
+Buat `lib/widgets/post_tile.dart`. `ListView.builder` di halaman paged dan non-paged sebelumnya berisi `ListTile` inline yang duplikat. `PostTile` memiliki parameter `onTap` (navigasi) dan `showBody` (subtitle body untuk halaman non-paged), sehingga builder kedua halaman pendek dan tile bisa diuji sebagai widget tersendiri.
+
+### 2. Pindahkan friendlyErrorMessage ke file lib/data/network_errors.dart agar bisa dipakai ulang halaman paged dan non-paged.
+
+Pindahkan `friendlyErrorMessage` dari `providers.dart` ke `lib/data/network_errors.dart`. Fungsinya hanya butuh `DioException`, bukan provider, jadi letaknya terlepas dari lapisan state. Halaman paged, non-paged, dan detail semuanya mengimpor file yang sama.
+
+### 3. Tambahkan halaman detail post dengan GoRouter (/post/:id) yang menampilkan title dan body lengkap, state detail diambil dari list yang sudah dimuat atau via repository bila langsung dibuka.
+
+Tambah dependensi `go_router`, buat `lib/router.dart` dengan route `/` (daftar post) dan `/post/:id` (detail), ubah `main.dart` menjadi `MaterialApp.router`. Halaman detail `lib/pages/post_detail_page.dart` mengambil data secara berjenjang:
+
+1. Cari di list yang sudah dimuat (`pagedPostsProvider`) → tampil instan, nol request baru saat user navigasi dari daftar.
+2. Jika list masih dimuat, tunggu.
+3. Jika dibuka langsung (deep link) dan post tidak ada di list → fetch via `PostRepository.fetchPost(id)` (GET /posts/:id) lewat `postDetailProvider` (FutureProvider.family).
+
+### Hasil
+
+`flutter analyze` tanpa issue dan `flutter test` lulus 12/12, termasuk test baru: klik tile membuka `/post/:id` dari cache (tanpa fetch), dan fallback repository saat post tidak ada di list.
+
+## Testing: unit test model + mock repository
+
+Buat `test/post_test.dart`, uji parsing aman null, mapping error, dan provider dengan repository palsu (tanpa internet):
+
+```dart
+class FakePostRepository extends PostRepository {
+  FakePostRepository({this.items, this.throwError = false})
+      : super(Dio());
+  final List<Post>? items;
+  final bool throwError;
+
+  @override
+  Future<List<Post>> fetchPosts() async {
+    if (throwError) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/posts'),
+        type: DioExceptionType.connectionError,
+      );
+    }
+    return items ?? const [];
+  }
+}
+```
+
+## 2. Empat test
+
+1. **Parsing aman null** — `Post.fromJson({'id': 7})`: field hilang diberi default (`title ''`, `userId 0`), tidak crash.
+2. **Mapping error** — `DioException(connectionError)` → `friendlyErrorMessage` berisi kata "terhubung".
+3. **Provider sukses** — `ProviderContainer` dengan `postRepositoryProvider.overrideWith((ref) => FakePostRepository(...))`, dibaca lewat helper `readPostsOnce`; hasilnya data dari repository palsu.
+4. **Provider error** — repo palsu melempar error, `readPostsErrorOnce` menghasilkan `AsyncError` berisi `DioException`.
+
+Catatan implementasi: setelah refactor, `friendlyErrorMessage` diimpor dari `lib/data/network_errors.dart` (bukan `providers.dart`), dan Riverpod 3 memakai `overrideWith((ref) => value)` untuk `Provider`.
+
+## 3. Jalankan
+
+```text
+flutter analyze
+flutter test
+```
+
+**Hasil:** analyze tanpa issue; `flutter test` lulus **16/16** (4 test baru di `post_test.dart` + 12 test sebelumnya). Pola override repository palsu ini adalah fondasi mock API yang dipakai lagi di Minggu 12 (Testing & QA).

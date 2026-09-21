@@ -48,7 +48,7 @@ widget test `State error + retry` (error kini tampil + tombol Coba lagi).
 | 4 state tampil benar: loading, error (+retry), empty, success | ✅ | `PagedPostPage`: flag baru `isLoadingFirst` memisahkan *loading* dari *empty* (sebelumnya server 0 data = spinner abadi); error fullscreen + tombol retry, error load-more di footer + retry; `PostListPage` via `state.when` + `posts.isEmpty` |
 | Pagination: data bertambah saat scroll, tanpa request ganda, ada indikator akhir data | ✅ | Guard `isLoadingFirst/isLoadingMore/hasMore/items.isEmpty` di notifier; re-check posisi pasca-load untuk layar besar; footer "Semua data termuat." saat `hasMore=false`. Test membuktikan `fetchCount[1]==1` dan `fetchCount[2]==1` |
 | `flutter analyze` tanpa issue | ✅ | `No issues found!` (2026-09-21) |
-| Semua test lulus | ✅ | `flutter test` → **9/9 lulus** (2 model + 4 pesan error + 3 widget) |
+| Semua test lulus | ✅ | `flutter test` → **16/16 lulus** (2 model Comment + 4 pesan error + 4 unit `post_test.dart` (parsing, mapping error, provider sukses/error via `FakePostRepository` tanpa internet) + 4 widget pagination/detail + 2 jalur cache vs repository) |
 | Hasil AI diverifikasi & didokumentasikan di `docs/` | ✅ | Dokumen ini |
 
 ## 4. Catatan Test Default
@@ -87,7 +87,7 @@ sambil log & screenshot dipantau.
 
 ```bash
 flutter analyze lib test   # target: No issues found
-flutter test               # target: All tests passed (9)
+flutter test               # target: All tests passed (16)
 flutter run                # device fisik: scroll sampai dasar ->
                            # 10 -> 20 -> ... item, footer "Semua data termuat."
 ```

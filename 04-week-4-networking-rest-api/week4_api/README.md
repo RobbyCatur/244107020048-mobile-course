@@ -263,3 +263,42 @@ flutter test
 ```
 
 **Hasil:** analyze tanpa issue; `flutter test` lulus **16/16** (4 test baru di `post_test.dart` + 12 test sebelumnya). Pola override repository palsu ini adalah fondasi mock API yang dipakai lagi di Minggu 12 (Testing & QA).
+
+# Tugas, refleksi, dan referensi
+
+## Mini project / Industry Challenge
+
+Aplikasi **"Posts Paged"** — daftar post dari JSONPlaceholder dengan infinite scroll dan halaman detail. Checklist ketentuan dan buktinya:
+
+| Ketentuan | Bukti di project ini |
+|---|---|
+| Data API dummy via repository + Riverpod | `PostRepository` → `postListProvider`/`pagedPostsProvider`, UI hanya `ref.watch` |
+| Dio terpusat (base URL, timeout, interceptor logging) | `lib/data/api_client.dart`: `baseUrl` jsonplaceholder, timeout 10s, `LogInterceptor` |
+| Model `fromJson` aman null | `lib/data/models/post.dart` dan `comment.dart` (fallback `0`/`''`, tak pernah crash) |
+| 4 state: loading, error (+retry), empty, success | `PostListPage` (`state.when`) dan `PagedPostPage` (flag `isLoadingFirst`, footer error + tombol "Coba lagi", "Belum ada data dari server.") |
+| Pagination infinite scroll 10/halaman + guard request ganda | `PagedPostsNotifier`: guard `isLoadingMore/hasMore/items.isEmpty`; test membuktikan tiap halaman direquest tepat 1x |
+| Minimal 2 test lulus | 16 test lulus: unit model, error mapping, provider dengan `FakePostRepository` (tanpa internet) |
+| AI Challenge terdokumentasi | Prompt, hasil, koreksi, dan alasan teknis di bagian AI Challenge + `docs/verifikasi-ai-week4.md` |
+| Struktur portfolio | `04-week-4-networking-rest-api/` dengan `lib/`, `test/`, `docs/`, `README.md`, `screenshots/` |
+
+**Cara menjalankan:** `flutter pub get` → `flutter run` (device fisik) → `flutter test` untuk verifikasi.
+
+**Stack:** Flutter (Material 3), Dart, Dio 5, flutter_riverpod 3 (`AsyncNotifier`, family), go_router (route `/post/:id`), flutter_test + `ProviderContainer` overrides.
+
+## Refleksi
+
+**1. Mengapa UI dilarang memanggil Dio langsung? Apa yang rusak jika dilanggar?**
+Lapisan repository + provider membuat sumber data menjadi satu titik yang bisa diganti. Buktinya di test kita: `postRepositoryProvider.overrideWith((ref) => FakePostRepository())` membuat seluruh UI (list, pagination, detail) teruji tanpa satu pun request HTTP. Jika widget memanggil Dio langsung, yang rusak: (a) test widget harus menyentuh jaringan sungguhan atau mock di level HTTP yang jauh lebih ribet; (b) konfigurasi terpusat (timeout, base URL, interceptor auth) tidak berlaku — tiap halaman bikin `Dio()` sendiri; (c) perubahan API (endpoint, struktur respons) memaksa edit banyak widget, bukan satu repository; (d) logika caching/guard pagination jadi terkopi dan tidak konsisten antar halaman.
+
+**2. Kapan pagination client-side cukup, dan kapan server (`_page`/`_limit`)?**
+Client-side cukup bila seluruh dataset memang kecil dan relatif statis (ratusan item, mis. daftar kategori/mata kuliah) — data diambil sekali lalu `ListView` menampilkan per potong, keuntungan: filter/sort instan tanpa request baru. Server-side wajib ketika: total data bisa ribuan dan terus bertambah (hemat bandwidth dan memori HP), perlu urutan global yang selalu segar, atau backend sudah menyediakan endpoint paginated — seperti JSONPlaceholder `?_page=N&_limit=10` yang kita pakai. Rule of thumb: kalau "ambil semua dulu" terasa boros di atas ~1.000 item atau di jaringan seluler, pakai server-side.
+
+**3. Bagaimana exception repository berubah menjadi `AsyncError` tanpa try/catch di widget? Kapan try/catch eksplisit tetap dibutuhkan?**
+`AsyncNotifier.build()` mengembalikan `Future`. Riverpod menyimpan future itu di `AsyncValue`; ketika future reject, state otomatis berubah menjadi `AsyncError(error, stackTrace)` — widget tinggal `state.when(error: ...)`. Try/catch eksplisit tetap dibutuhkan saat: (a) state custom bukan `AsyncValue` — `PagedPostsNotifier` kami memakai `PagedPostsState` manual sehingga wajib `try/catch` untuk menyimpan error **bersama** data lama (ini persis bug "spinner abadi" di device: error halaman 2 tertangkap tapi tidak pernah ditampilkan); (b) ingin recover sebagian (log lalu lanjut, bukan tampilkan error); (c) `refresh()` yang harus mempertahankan `state` lama sambil memuat ulang; (d) mengonversi error menjadi nilai default (`fallback`) alih-alih status error.
+
+**4. Bagian mana dari hasil AI yang Anda perbaiki, dan mengapa?**
+Empat hal, semuanya lewat verifikasi (test/analyze/device fisik):
+- `Comment.fromJson` versi pertama memakai `(json['x'] as num?)?.toInt() ?? 0` yang masih crash saat field bertipe salah (angka dikirim sebagai string). Unit test saya menangkap `TypeError`; diganti helper defensif `_asInt`/`_asString`.
+- AI memakai `FamilyAsyncNotifier` yang tidak ada di Riverpod 3. `flutter analyze` menolak; diperbaiki menjadi konstruktor `CommentListNotifier(this.postId)`.
+- Perbaikan pagination pertama AI tidak menyelesaikan gejala di device fisik: di layar tinggi 720x1640, 10 item + footer lebih pendek dari viewport sehingga `maxScrollExtent = 0` dan listener scroll tidak pernah fires. Tertangkap hanya dengan menjalankan app di device, lalu ditambah re-check posisi otomatis setiap load selesai.
+- `widget_test.dart` bawaan template (counter) sudah tidak relevan dan selalu gagal. Diganti smoke test pagination yang menguji 4 state lewat repository palsu.

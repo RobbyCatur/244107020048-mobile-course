@@ -85,3 +85,40 @@ Output:
 
 # Praktikum 3: Pagination dasar
 
+## Konsep pagination
+
+API dengan data besar tidak dikirim sekaligus, melainkan per halaman. JSONPlaceholder mendukung query `?_page=N&_limit=M`. Strategi UI: _infinite scroll_, muat halaman berikut saat pengguna mendekati ujung list, tampilkan indikator kecil di bawah tanpa menghapus data lama.
+
+## 1. Repository paginated
+
+Tambahkan method berikut ke PostRepository:
+
+<img src="../screenshots/praktikum3/post_repository.png">
+
+## 2. Notifier dengan state halaman
+
+Lanjutkan `lib/data/paged_posts.dart` dengan notifier (guard ganda + data lama dipertahankan saat error):
+
+<img src="../screenshots/praktikum3/paged_posts.png">
+
+## 3. Notifier dengan state halaman (lanjutan)
+
+Lanjutkan file `lib/data/paged_posts.dart` dengan notifier:
+
+<img src="../screenshots/praktikum3/paged_posts2.png">
+
+<img src="../screenshots/praktikum3/paged_posts3.png">
+
+## 4. UI infinite scroll
+
+Buat `lib/pages/paged_post_page.dart` dengan ScrollController yang memicu halaman berikut 200px sebelum ujung list:
+
+<img src="../screenshots/praktikum3/paged_post_page.png">
+
+<img src="../screenshots/praktikum3/paged_post_page2.png">
+
+<img src="../screenshots/praktikum3/paged_post_page3.png">
+
+Ubah home di main.dart menjadi PagedPostPage, jalankan, dan scroll sampai bawah. Amati: halaman 1 tampil dulu, indikator muncul, data bertambah tanpa reload penuh.
+
+<img src="../screenshots/praktikum3/preview.png">\
